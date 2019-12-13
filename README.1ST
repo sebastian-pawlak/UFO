@@ -1,0 +1,24 @@
+   title: UFO
+ version: 1.0
+released: 2019-12-07
+  author: Sebastian Pawlak aka tr1x
+   party: Silly Venture 2019
+category: Atari XL/XE Intro 256B
+hardware: original Atari XL/XE 64KB PAL
+
+Successfully tested with Altirra/x64 2.60: XE PAL / 64K / BASIC.
+
+Successfully tested with original Atari 65XE + Lotharek's Sio2sd Ver. 1.3.
+Turn the computer on while you are not holding down the OPTION key.
+
+It uses stable illegal opcodes.
+
+Run it with clean memory.
+
+May not work with some DOSes or file managers.
+
+To have better immersion, try to watch this intro while listening to 
+"On The Other Side Of The World" by Marek Bilinski.
+
+Greetz to: Asal, evvelina, Grey, Lutel, perinoid, Shredder,
+           sun, Talimoon, Virt

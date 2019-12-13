@@ -1,0 +1,226 @@
+mads 2.0.6 build 58 (28 Jan 17)
+Source: C:\jac\wudsn\Workspace\UFO\UFO.ASM
+     1 				; "UFO", Atari XL/XE Intro 256B
+     2 				; code by tr1x
+     3 				; requirements: original Atari XL/XE 64KB PAL
+     4 				; version: 1.0
+     5 				; release date: 2019-12-07
+     6
+     7 					org $600
+     8
+     9 				;debug	equ 1		; for graphics preview of diagonal lines
+    10 = 0000			offset	equ 0		; display list offset, used for preview only
+    11
+    12 = 00B5			vertlin	equ $b5		; number of vertical lines
+    13 = 0058			memdl1	equ $0058	; we do believe that the initial value = #>dlist
+    14 = 00CD			memdl2	equ $00cd
+    15 = 00CF			memvp1	equ $00cf
+    16 = 00D5			memdbg1	equ $00d5
+    17 = 00D7			memdbg2	equ $00d7
+    18 = 0200			vdslst	equ $0200
+    19 = 0224			vvblkd	equ $0224
+    20 = 022F			sdmctl	equ $022f
+    21 = 02C0			pcolr0	equ $02c0
+    22 = 02C1			pcolr1	equ $02c1
+    23 = 02C2			pcolr2	equ $02c2
+    24 = 02C6			color2	equ $02c6
+    25 = 4000			vidptr	equ $4000	; video memory
+    26 = 9C20			dlist	equ $9c20	; display list
+    27 = D000			hposp0	equ $d000
+    28 = D001			hposp1	equ $d001
+    29 = D002			hposp2	equ $d002
+    30 = D013			colpm1	equ $d013
+    31 = D017			colpf1	equ $d017
+    32 = D01D			gractl	equ $d01d
+    33 = D20A			random	equ $d20a
+    34 = D407			pmbase	equ $d407
+    35 = D40A			wsync	equ $d40a
+    36 = D40B			vcount	equ $d40b
+    37 = D40E			nmien	equ $d40e
+    38 = E45C			setvbv	equ $e45c
+    39 = E462			xitvbv	equ $e462
+    40
+    41 					; prepare display list
+    42 FFFF> 0600-06D3> A9 23		lda #<dlist+3
+    43 0602 85 58			sta memdl1
+    44 					;lda #>dlist
+    45 					;sta memdl1+1
+    46 0604 A2 B5			ldx #vertlin
+    47 0606 A0 00			ldy #$00
+    48 0608 A9 4F		loopa1	lda #$4f	; ANTIC command: gr.mode | address
+    49 060A 91 58			sta (memdl1),y
+    50 060C E6 58			inc memdl1
+    51 					;bne skipb1	; not needed,
+    52 					;inc memdl1+1	; ..since does not occur in practice
+    53 060E AD 0A D2		skipa1	lda random
+    54 0611 48				pha
+    55 0612 29 C0			and #%11000000	; $..00, $..40, $..80, $..c0
+    56 0614 91 58			sta (memdl1),y
+    57 0616 E6 58			inc memdl1
+    58 0618 D0 02			bne skipa2
+    59 061A E6 59			inc memdl1+1
+    60 061C 68			skipa2	pla
+    61 061D 29 3F			and #%00111111
+    62 					;clc		; not needed in practice
+    63 061F 69 40			adc #>vidptr
+    64 0621 91 58			sta (memdl1),y
+    65 0623 E6 58			inc memdl1
+    66 0625 D0 02			bne skipa3
+    67 0627 E6 59			inc memdl1+1
+    68 0629 CA			skipa3	dex
+    69 062A D0 DC			bne loopa1
+    70
+    71 					;lda #$41	; jump to the beginning of display list
+    72 					;sta dlist+$243	; ..is not necessary
+    73 					;lda #<dlist
+    74 					;sta dlist+$244
+    75 					;lda #>dlist
+    76 					;sta dlist+$245
+    77
+    78 					; draw diagonal line #1
+    79 062C 20 AA 06			jsr draw
+    80
+    81 					; set PMG
+    82 062F A9 82			lda #$82
+    83 0631 8D 01 D0			sta hposp1
+    84 0634 8D C0 02			sta pcolr0
+    85 0637 8D C1 02			sta pcolr1
+    86 063A 8D 07 D4			sta pmbase
+    87 063D A9 7D			lda #$7d
+    88 063F 8D 02 D0			sta hposp2
+    89 0642 A9 7A			lda #$7a
+    90 0644 8D 00 D0			sta hposp0
+    91 0647 8D 2F 02			sta sdmctl
+    92 064A 8D 1D D0			sta gractl
+    93
+    94 					; draw diagonal line #2
+    95 064D 8D B4 06			sta opcodc2	; illegal opcode "npo" ($7a)
+    96 0650 8D B5 06			sta opcodc3	; illegal opcode "npo" ($7a)
+    97 0653 20 AA 06			jsr draw
+    98
+    99 0656 8E C6 02			stx color2
+   100
+   101 					; draw diagonal line #3
+   102 0659 8D B3 06			sta opcodc1	; illegal opcode "dop #n" ($80)
+   103 065C 20 AA 06			jsr draw
+   104
+   105 					; for diagonal lines preview; not needed for normal operation
+   106 				.if .def debug
+   107 					lda #<dlist+4
+   108 					sta memdbg1
+   109 					lda #>dlist
+   110 					sta memdbg1+1
+   111 					lda #<vidptr
+   112 					sta memdbg2
+   113 					lda #>vidptr+offset
+   114 					sta memdbg2+1
+   115 					ldx #vertlin
+   116 					ldy #$00
+   117 				loopd1	lda memdbg2
+   118 					sta (memdbg1),y
+   119 					inc memdbg1
+   120 					bne skipd1
+   121 					inc memdbg1+1
+   122 				skipd1	lda memdbg2+1
+   123 					sta (memdbg1),y
+   124 					lda memdbg2
+   125 					clc
+   126 					adc #$40
+   127 					sta memdbg2
+   128 					bne skipd2
+   129 					inc memdbg2+1
+   130 				skipd2	inc memdbg1
+   131 					bne skipd3
+   132 					inc memdbg1+1
+   133 				skipd3	inc memdbg1
+   134 					bne skipd4
+   135 					inc memdbg1+1
+   136 				skipd4	dex
+   137 					bne loopd1
+   138 					lda #$01
+   139 					sta colpf1
+   140 					jmp *
+   141 				.endif
+   142
+   143 					; set VBI routine
+   144 065F A9 07			lda #$07
+   145 0661 A0 74			ldy <vbirout
+   146 0663 A2 06			ldx >vbirout
+   147 0665 20 5C E4			jsr setvbv
+   148
+   149 					; main loop
+   150 0668 8D 0A D4		anim	sta wsync
+   151 066B AD 0B D4			lda vcount	; gray rainbow
+   152 066E 0A				asl
+   153 066F 8D 17 D0			sta colpf1
+   154 0672 50 F4			bvc anim	; 1 byte less than "jmp anim"
+   155
+   156 					; vertical blank interrupt routine
+   157 0674 A9 24		vbirout	lda #<dlist+4
+   158 0676 85 CD			sta memdl2
+   159 0678 A9 9C			lda #>dlist
+   160 067A 85 CE			sta memdl2+1
+   161 067C A2 B5			ldx #vertlin
+   162 067E A0 00		loopb1	ldy #$00
+   163 0680 B1 CD			lda (memdl2),y
+   164 					;clc		; not needed in practice
+   165 0682 69 40			adc #$40
+   166 0684 91 CD			sta (memdl2),y
+   167 0686 D0 0B			bne skipb1
+   168 0688 C8				iny
+   169 0689 B1 CD			lda (memdl2),y
+   170 068B 69 00			adc #$00	; +1, carry flag is set
+   171 068D 10 02			bpl skipb2
+   172 068F A9 40			lda #>vidptr
+   173 0691 91 CD		skipb2	sta (memdl2),y
+   174 0693 E6 CD		skipb1	inc memdl2
+   175 0695 D0 02			bne skipb3
+   176 0697 E6 CE			inc memdl2+1
+   177 0699 E6 CD		skipb3	inc memdl2
+   178 069B D0 02			bne skipb4
+   179 069D E6 CE			inc memdl2+1
+   180 069F E6 CD		skipb4	inc memdl2
+   181 06A1 CA			skipb5	dex
+   182 06A2 D0 DA			bne loopb1
+   183 06A4 8D C2 02			sta pcolr2
+   184 06A7 4C 62 E4			jmp xitvbv
+   185
+   186 					; draw a diagonal line
+   187 06AA			draw	;lda <vidptr	; not needed
+   188 					;sta memvp1
+   189 06AA A9 40			lda >vidptr
+   190 06AC 85 D0			sta memvp1+1
+   191 06AE A9 80			lda #%10000000
+   192 					;ldx #$00	; not needed
+   193 06B0 A0 04			ldy #$04
+   194 06B2 4A			loopc1	lsr
+   195 06B3 4A			opcodc1	lsr
+   196 06B4 4A			opcodc2	lsr
+   197 06B5 4A			opcodc3	lsr
+   198 06B6 90 09			bcc skipc2
+   199 06B8 C8				iny
+   200 06B9 C0 24			cpy #$24
+   201 06BB D0 02			bne skipc1
+   202 06BD A0 04			ldy #$04
+   203 06BF A9 80		skipc1	lda #%10000000
+   204 06C1 48			skipc2	pha
+   205 06C2 91 CF			sta (memvp1),y
+   206 06C4 A5 CF			lda memvp1
+   207 06C6 18				clc
+   208 06C7 69 40			adc #$40
+   209 06C9 85 CF			sta memvp1
+   210 06CB D0 02			bne skipc3
+   211 06CD E6 D0			inc memvp1+1
+   212 06CF 68			skipc3	pla
+   213 06D0 CA				dex
+   214 06D1 D0 DF			bne loopc1
+   215 06D3 60				rts
+   216
+   217 06D4				org $8476
+   218 8476-847F> 03 04 08 08 + ufoleft	.byte $03, $04, $08, $08, $3c, $7f, $df, $fb, $7f, $1f
+   219
+   220 8480				org $8577
+   221 8577-857F> 80 40 40 F0 + uforght	.byte $80, $40, $40, $f0, $f8, $ec, $7c, $f8, $e0
+   222
+   223 8580				org $8683
+   224 8683-8687> 18 00 3C 00 + jet	.byte $18, $00, $3c, $00, $7e
